@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Market Autopilot — возврат из VK ID</title>
+  <style>
+    body{margin:0;background:#102439;color:#f5f8fa;font:18px/1.6 system-ui,sans-serif}
+    main{max-width:680px;margin:10vh auto;padding:32px;background:#19344c;border-radius:24px}
+    .brand{color:#65ded3;font-weight:700;letter-spacing:.04em}h1{font-size:30px;line-height:1.25}
+    button{font:inherit;font-weight:600;padding:14px 20px;border:0;border-radius:12px;background:#ffd45f;color:#102439;cursor:pointer}
+    button:disabled{opacity:.5;cursor:default}.hint{font-size:15px;color:#bfd0dc}
+    @media(max-width:760px){main{margin:24px 16px;padding:24px}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand">MARKET AUTOPILOT</div>
+  <h1>Возврат из VK ID</h1>
+  <p id="status" role="status">Эта страница принимает результат авторизации для локального приложения Market Autopilot.</p>
+  <button id="copy" type="button" disabled>Скопировать результат для приложения</button>
+  <p id="copy-status" role="status"></p>
+  <p class="hint">Результат вставляется только в окно подключения ВК в приложении на вашем компьютере. Не отправляйте его в чат. Подключение завершится после проверки приложением.</p>
+  <p class="hint">Страница не запрашивает пароль, не обменивает код на токены и не отправляет результат другим сервисам.</p>
+  <noscript>Для обработки результата авторизации требуется JavaScript. Не отправляйте адрес страницы в чат.</noscript>
+</main>
+<script>
+(() => {
+  'use strict';
+  const incomingSearch = location.search;
+  const incomingHash = location.hash;
+  const params = new URLSearchParams(incomingSearch);
+  const fragment = new URLSearchParams(incomingHash.replace(/^#/, ''));
+  history.replaceState(null, '', location.pathname);
+  const status = document.getElementById('status');
+  const copy = document.getElementById('copy');
+  if (params.has('access_token') || fragment.has('access_token') || params.has('refresh_token') || fragment.has('refresh_token')) {
+    status.textContent = 'Получен неподдерживаемый вид авторизации. Запустите подключение заново из приложения.';
+    return;
+  }
+  if (params.has('error')) {
+    status.textContent = 'ВК не завершил авторизацию. Вернитесь в приложение и запустите подключение заново.';
+    return;
+  }
+  if (!incomingSearch && !incomingHash) return;
+  const values = {};
+  for (const key of ['code', 'state', 'device_id']) {
+    const items = params.getAll(key);
+    if (items.length !== 1 || !items[0] || items[0].length > 4096) {
+      status.textContent = 'Результат авторизации неполный или неоднозначный. Запустите подключение заново из приложения.';
+      return;
+    }
+    values[key] = items[0];
+  }
+  const result = JSON.stringify({format: 'vk_oauth_callback_v1', ...values});
+  status.textContent = 'ВК вернул результат авторизации. Скопируйте его и вставьте в локальное окно подключения ВК. Это ещё не подтверждение доступа к публикациям.';
+  copy.disabled = false;
+  copy.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(result);
+      document.getElementById('copy-status').textContent = 'Скопировано. Вернитесь в локальное приложение.';
+    } catch {
+      document.getElementById('copy-status').textContent = 'Браузер не разрешил копирование. Разрешите его для этой страницы и повторите нажатие.';
+    }
+  });
+})();
+</script>
+</body>
+</html>
